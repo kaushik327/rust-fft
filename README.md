@@ -1,9 +1,9 @@
 # CS 128H Final Project: Fast Fourier Transforms with Rust
 
 
-### Group Members
+### Group
 
-Vedang Bhargava (vedangb2), Jesse Lee (jessel3), Kaushik Varadharajan (kv22)
+The Danger Noodles 🐍: Vedang Bhargava (vedangb2), Jesse Lee (jessel3), Kaushik Varadharajan (kv22)
 
 ### Introduction
 
