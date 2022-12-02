@@ -30,35 +30,31 @@ pub fn display_samples(samples: Vec<i16>) {
     // Definitely switching to a different crate in the future.
 }
 
-pub fn i16_fft(x: Vec<i16>) -> Vec<i16> {
-    let complex_vec = x.iter().map(|x| Complex::<f64>::new(*x as f64, 0.0)).collect();
-    let fft = fft(complex_vec);
-    return fft.iter().map(|x| x.re as i16).collect();
-}
-
-pub fn fft(x: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
-    // radix-2 Cooley-Tukey FFT; recursive algorithm, O(nlogn).
+pub fn fft(x: Vec<i16>) -> Vec<Complex<f64>> {
+    // radix-2 Cooley-Tukey FFT; recursive algorithm.
     // Assumes x.len() is a power of 2.
-    let N = x.len();
-    if N == 1 { return x.to_vec() }
+    let length = x.len();
+    if length == 1 {
+        return vec![Complex::new(x[0] as f64, 0.0)];
+    }
     let mut x_even = Vec::new();
     let mut x_odd = Vec::new();
-    for k in (0..N).step_by(2) {
+    for k in (0..length).step_by(2) {
         x_even.push(x[k]);
         x_odd.push(x[k+1]);
     }
-    let X_even = fft(x_even);
-    let X_odd = fft(x_odd);
-    let mut ans = Vec::new();
-    for k in 0..N/2 {
-        let factor = Complex::<f64>::new(0.0, -2.0*PI*(k as f64)/(N as f64)).exp();
-        ans.push(X_even[k] + factor * X_odd[k]);
+    let fft_even = fft(x_even);
+    let fft_odd = fft(x_odd);
+    let mut fft = Vec::new();
+    fft.push(fft_even[0] + fft_odd[0]);
+    for k in 1..length/2 {
+        fft.push(fft_even[k] + fft_odd[k] * Complex::new(0.0, -2.0*PI*(k as f64)/(length as f64)).exp());
     }
-    for k in 0..N/2 {
-        let factor = -Complex::<f64>::new(0.0, -2.0*PI*(k as f64)/(N as f64)).exp();
-        ans.push(X_even[k] + factor * X_odd[k])
+    fft.push(fft_even[0] - fft_odd[0]);
+    for k in (1..length/2).rev() {
+        fft.push(fft[k].conj())
     }
-    return ans;
+    return fft;
 }
 
 
@@ -66,9 +62,9 @@ fn main() {
     // let samples = read_wav("/home/vagrant/src/rust-fft/audio/clap.wav");
     // display_samples(samples);
 
-    // Test data from https://bookdown.org/rdpeng/timeseriesbook/the-fast-fourier-transform-fft.html#example-a-simple-fft
-    let vec = vec![-1.545448388, -0.528393243, -1.086758791, -0.000111512];
-    let complex_vec = vec.iter().map(|x| Complex::<f64>::new(*x, 0.0)).collect();
-    let fft = fft(complex_vec);
-    println!("{:?}", fft);
+    // https://scistatcalc.blogspot.com/2013/12/fft-calculator.html
+    let fft = fft(vec![1, 6, 2, 7, 3, 4, 6, 1, 2, 7, 4, 9, 1, 8, 4, 2]);
+    let formatted: Vec<Vec<f64>> = fft.iter().map(|x| vec![x.re, x.im]).collect();
+    println!("{:?}", formatted);
+    // Prints the vector of complex numbers like [real, imaginary]
 }
