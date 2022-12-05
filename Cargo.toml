@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 hound = "3.5.0"
-plotly = "0.8.3"
-num-complex = "0.4.2"
+num-complex = "0.4.2"   
+charts = "0.3.0"
