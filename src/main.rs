@@ -2,8 +2,10 @@ use std::i16;
 use hound;
 use num_complex::Complex;
 use std::f32::consts::PI;
-use charts::{Chart, ScaleLinear, MarkerType, PointLabelPosition, LineSeriesView};
-
+use plotlib::page::Page;
+use plotlib::repr::Plot;
+use plotlib::view::ContinuousView;
+use plotlib::style::{PointMarker, PointStyle};
 
 pub fn read_wav(filename: &str) -> Vec<i16> {
     let mut reader = hound::WavReader::open(filename).unwrap();
@@ -12,43 +14,26 @@ pub fn read_wav(filename: &str) -> Vec<i16> {
 }
 
 pub fn display_samples(samples: Vec<i16>) {
-    let width = 800;
-    let height = 600;
-    let (top, right, bottom, left) = (90, 40, 50, 60);
 
-    let x = ScaleLinear::new()
-        .set_domain(vec![0.0, samples.len() as f32])
-        .set_range(vec![0, width - left - right]);
+    let data = samples.iter().enumerate().map(|(x, y)| ((x as f64)/44100.0, *y as f64)).collect();
 
-    let y = ScaleLinear::new()
-        .set_domain(vec![i16::MIN as f32, i16::MAX as f32])
-        .set_range(vec![height - top - bottom, 0]);
+    // We create our scatter plot from the data
+    let s1: Plot = Plot::new(data).point_style(
+        PointStyle::new()
+            // .marker(PointMarker::Square) // setting the marker to be a square
+            .colour("#663999"),
+    ); // and a custom colour
 
-    let line_data = samples.iter()
-                              .enumerate()
-                              .map(|(x, y)| (x as f32, *y as f32))
-                              .collect();
+    // The 'view' describes what set of data is drawn
+    let v = ContinuousView::new()
+        .add(s1)
+        .x_range(0.0, (samples.len() as f64)/44100.0)
+        .y_range(i16::MIN as f64, i16::MAX as f64)
+        .x_label("Time")
+        .y_label("Amplitude");
 
-    // Create Line series view that is going to represent the data.
-    let line_view = LineSeriesView::new()
-        .set_x_scale(&x)
-        .set_y_scale(&y)
-        .set_marker_type(MarkerType::Circle)
-        .set_label_position(PointLabelPosition::N)
-        .load_data(&line_data).unwrap();
-
-    // Generate and save the chart.
-    Chart::new()
-        .set_width(width)
-        .set_height(height)
-        .set_margins(top, right, bottom, left)
-        .add_title(String::from("Audio"))
-        .add_view(&line_view)
-        .add_axis_bottom(&x)
-        .add_axis_left(&y)
-        .add_left_axis_label("Time")
-        .add_bottom_axis_label("Amplitude")
-        .save("/home/vagrant/src/rust-fft/output/scatter-chart.svg").unwrap();
+    // A page with a single view is then saved to an SVG file
+    Page::single(&v).save("output/audio.svg").unwrap();
 }
 
 pub fn fft(x: Vec<i16>) -> Vec<Complex<f32>> {
