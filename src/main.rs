@@ -5,7 +5,7 @@ use std::f32::consts::PI;
 use plotlib::page::Page;
 use plotlib::repr::Plot;
 use plotlib::view::ContinuousView;
-use plotlib::style::{PointMarker, PointStyle};
+use plotlib::style::{PointStyle, LineStyle};
 
 pub fn read_wav(filename: &str) -> Vec<i16> {
     let mut reader = hound::WavReader::open(filename).unwrap();
@@ -14,15 +14,17 @@ pub fn read_wav(filename: &str) -> Vec<i16> {
 }
 
 pub fn display_samples(samples: Vec<i16>) {
-
     let data = samples.iter().enumerate().map(|(x, y)| ((x as f64)/44100.0, *y as f64)).collect();
 
     // We create our scatter plot from the data
-    let s1: Plot = Plot::new(data).point_style(
-        PointStyle::new()
-            // .marker(PointMarker::Square) // setting the marker to be a square
-            .colour("#663999"),
-    ); // and a custom colour
+    let s1: Plot = Plot::new(data)
+        .point_style(
+            PointStyle::new()
+                .size(0.0),
+        ).line_style(
+            LineStyle::new()
+                .colour("#663399")
+        ); // and a custom colour
 
     // The 'view' describes what set of data is drawn
     let v = ContinuousView::new()
