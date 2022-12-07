@@ -1,4 +1,3 @@
-use std::i16;
 use hound;
 use num_complex::Complex;
 use std::f64::consts::PI;
@@ -6,6 +5,10 @@ use plotlib::page::Page;
 use plotlib::repr::Plot;
 use plotlib::view::ContinuousView;
 use plotlib::style::{PointStyle, LineStyle};
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
+use std::thread;
+
 
 pub fn read_wav(filename: &str) -> Vec<i16> {
     let mut reader = hound::WavReader::open(filename).unwrap();
@@ -35,11 +38,10 @@ pub fn display_samples(samples: &Vec<i16>, filename: &str) {
 pub fn display_fft(fft: &Vec<Complex<f64>>, filename: &str) {
     let length = fft.len();
 
-    // Still need to work out this part
     let data = fft.iter()
                   .enumerate()
                   .map(|(x, y)| ((x as f64) * 44100.0 * 2.0 / (length as f64), y.norm() * 2.0 / (length as f64)))
-                  .take(length / 4)
+                  .take(length / 4 + 1)
                   .collect();
     let graph: Plot = Plot::new(data)
         .point_style(
@@ -58,8 +60,7 @@ pub fn display_fft(fft: &Vec<Complex<f64>>, filename: &str) {
     Page::single(&v).save(filename).unwrap();
 }
 
-
-pub fn fft(x: Vec<i16>) -> Vec<Complex<f64>> {
+pub fn fft(x: &Vec<i16>) -> Vec<Complex<f64>> {
     // radix-2 Cooley-Tukey FFT; recursive algorithm.
     // Assumes x.len() is a power of 2.
     let length = x.len();
@@ -70,8 +71,18 @@ pub fn fft(x: Vec<i16>) -> Vec<Complex<f64>> {
         x_even.push(x[k]);
         x_odd.push(x[k+1]);
     }
-    let fft_even = fft(x_even);
-    let fft_odd = fft(x_odd);
+
+    let (tx_even, rx_even): (Sender<Vec<Complex<f64>>>, Receiver<Vec<Complex<f64>>>) = mpsc::channel();
+    thread::spawn(move || {
+        tx_even.send(fft(&x_even)).unwrap();
+    });
+    let (tx_odd, rx_odd): (Sender<Vec<Complex<f64>>>, Receiver<Vec<Complex<f64>>>) = mpsc::channel();
+    thread::spawn(move || {
+        tx_odd.send(fft(&x_odd)).unwrap();
+    });
+    let fft_even = rx_even.recv().unwrap();
+    let fft_odd = rx_odd.recv().unwrap();
+
     let mut fft = Vec::new();
     fft.push(fft_even[0] + fft_odd[0]);
     for k in 1..length/2 {
@@ -84,12 +95,11 @@ pub fn fft(x: Vec<i16>) -> Vec<Complex<f64>> {
     return fft;
 }
 
-
 fn main() {
-    let samples = read_wav("/home/vagrant/src/rust-fft/audio/chord.wav");
-    display_samples(&(samples[4096..8192].to_vec()), "output/audio.svg");
+    let samples = read_wav("/home/vagrant/src/rust-fft/audio/chord.wav")[..4096].to_vec();
+    display_samples(&samples, "output/audio.svg");
 
-    let fft = fft(samples[4096..8192].to_vec());
+    let fft = fft(&samples);
     display_fft(&fft, "output/fft.svg");
 
     // https://scistatcalc.blogspot.com/2013/12/fft-calculator.html
