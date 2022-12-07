@@ -11,7 +11,9 @@ use std::thread;
 
 
 pub fn read_wav(filename: &str) -> Vec<i16> {
-    let mut reader = hound::WavReader::open(filename).unwrap();
+    let full_filename = format!("{}/audio/{}.wav", std::env::current_dir().unwrap().display(), filename);
+    println!("{}", full_filename);
+    let mut reader = hound::WavReader::open(full_filename).unwrap();
     let samples: Vec<i16> = reader.samples::<i16>().map(|x| x.unwrap()).collect();
     return samples;
 }
@@ -96,7 +98,13 @@ pub fn fft(x: &Vec<i16>) -> Vec<Complex<f64>> {
 }
 
 fn main() {
-    let samples = read_wav("/home/vagrant/src/rust-fft/audio/chord.wav")[..4096].to_vec();
+    println!("Add your .wav file to the /audio directory, and enter its filename (without extension) below. Press [enter] when done.");
+    let mut filename = String::new();
+    std::io::stdin().read_line(&mut filename).unwrap();
+    filename.pop();
+
+
+    let samples = read_wav(&filename)[..4096].to_vec();
     display_samples(&samples, "output/audio.svg");
 
     let fft = fft(&samples);
