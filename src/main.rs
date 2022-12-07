@@ -1,7 +1,7 @@
 use std::i16;
 use hound;
 use num_complex::Complex;
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 use plotlib::page::Page;
 use plotlib::repr::Plot;
 use plotlib::view::ContinuousView;
@@ -13,38 +13,57 @@ pub fn read_wav(filename: &str) -> Vec<i16> {
     return samples;
 }
 
-pub fn display_samples(samples: Vec<i16>) {
+pub fn display_samples(samples: &Vec<i16>, filename: &str) {
     let data = samples.iter().enumerate().map(|(x, y)| ((x as f64)/44100.0, *y as f64)).collect();
-
-    // We create our scatter plot from the data
-    let s1: Plot = Plot::new(data)
+    let graph: Plot = Plot::new(data)
         .point_style(
             PointStyle::new()
                 .size(0.0),
         ).line_style(
             LineStyle::new()
-                .colour("#663399")
-        ); // and a custom colour
-
-    // The 'view' describes what set of data is drawn
+                .colour("#ff0000")
+        );
     let v = ContinuousView::new()
-        .add(s1)
+        .add(graph)
         .x_range(0.0, (samples.len() as f64)/44100.0)
         .y_range(i16::MIN as f64, i16::MAX as f64)
-        .x_label("Time")
+        .x_label("Time (s)")
         .y_label("Amplitude");
-
-    // A page with a single view is then saved to an SVG file
-    Page::single(&v).save("output/audio.svg").unwrap();
+    Page::single(&v).save(filename).unwrap();
 }
 
-pub fn fft(x: Vec<i16>) -> Vec<Complex<f32>> {
+pub fn display_fft(fft: &Vec<Complex<f64>>, filename: &str) {
+    let length = fft.len();
+
+    // Still need to work out this part
+    let data = fft.iter()
+                  .enumerate()
+                  .map(|(x, y)| ((x as f64) * 44100.0 * 2.0 / (length as f64), y.norm() * 2.0 / (length as f64)))
+                  .take(length / 4)
+                  .collect();
+    let graph: Plot = Plot::new(data)
+        .point_style(
+            PointStyle::new()
+                .size(0.0),
+        ).line_style(
+            LineStyle::new()
+                .colour("#ff0000")
+        );
+    let v = ContinuousView::new()
+        .add(graph)
+        .x_range(0.0, 44100.0 / 2.0)
+        .y_range(0.0, i16::MAX as f64)
+        .x_label("Frequency (Hz)")
+        .y_label("Amplitude");
+    Page::single(&v).save(filename).unwrap();
+}
+
+
+pub fn fft(x: Vec<i16>) -> Vec<Complex<f64>> {
     // radix-2 Cooley-Tukey FFT; recursive algorithm.
     // Assumes x.len() is a power of 2.
     let length = x.len();
-    if length == 1 {
-        return vec![Complex::new(x[0] as f32, 0.0)];
-    }
+    if length == 1 { return vec![Complex::new(x[0] as f64, 0.0)]; }
     let mut x_even = Vec::new();
     let mut x_odd = Vec::new();
     for k in (0..length).step_by(2) {
@@ -56,7 +75,7 @@ pub fn fft(x: Vec<i16>) -> Vec<Complex<f32>> {
     let mut fft = Vec::new();
     fft.push(fft_even[0] + fft_odd[0]);
     for k in 1..length/2 {
-        fft.push(fft_even[k] + fft_odd[k] * Complex::new(0.0, -2.0*PI*(k as f32)/(length as f32)).exp());
+        fft.push(fft_even[k] + fft_odd[k] * Complex::new(0.0, -2.0*PI*(k as f64)/(length as f64)).exp());
     }
     fft.push(fft_even[0] - fft_odd[0]);
     for k in (1..length/2).rev() {
@@ -67,14 +86,11 @@ pub fn fft(x: Vec<i16>) -> Vec<Complex<f32>> {
 
 
 fn main() {
-    let samples = read_wav("/home/vagrant/src/rust-fft/audio/clap.wav");
+    let samples = read_wav("/home/vagrant/src/rust-fft/audio/chord.wav");
+    display_samples(&(samples[4096..8192].to_vec()), "output/audio.svg");
 
-    display_samples(samples);
+    let fft = fft(samples[4096..8192].to_vec());
+    display_fft(&fft, "output/fft.svg");
 
-    // let fft = fft(vec![1, 6, 2, 7, 3, 4, 6, 1, 2, 7, 4, 9, 1, 8, 4, 2]);
-    // let formatted: Vec<Vec<f32>> = fft.iter().map(|x| vec![x.re, x.im]).collect();
-    // println!("{:?}", formatted);
-    
-    // Prints the vector of complex numbers like [real, imaginary]
     // https://scistatcalc.blogspot.com/2013/12/fft-calculator.html
 }
