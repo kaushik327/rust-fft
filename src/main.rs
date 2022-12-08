@@ -103,7 +103,6 @@ fn main() {
     std::io::stdin().read_line(&mut filename).unwrap();
     filename.pop();
 
-
     let samples = read_wav(&filename)[..4096].to_vec();
     display_samples(&samples, "output/audio.svg");
 
